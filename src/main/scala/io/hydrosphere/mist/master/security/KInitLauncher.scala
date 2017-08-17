@@ -55,7 +55,7 @@ object KInitLauncher {
       promise.future
     }
 
-    private def execOnce(): Int = Process(cmd).run(NOPProcessLogger, false).exitValue()
+    def execOnce(): Int = Process(cmd).run(NOPProcessLogger, false).exitValue()
 
   }
 

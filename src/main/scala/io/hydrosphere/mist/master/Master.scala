@@ -38,7 +38,7 @@ object Master extends App with Logger {
 
     val config = MasterConfig.load(appArguments.configPath)
 
-    if (config.security.enabled) {
+    val kinit = if (config.security.enabled) {
       import scala.concurrent.ExecutionContext.Implicits.global
       import config.security._
 
@@ -49,7 +49,8 @@ object Master extends App with Logger {
           logger.error("KInit process failed", e)
           sys.exit(1)
       })
-    }
+      Some(ps)
+    } else None
 
     val endpointsStorage = EndpointsStorage.create(config.endpointsPath, appArguments.routerConfigPath)
     val contextsStorage = ContextsStorage.create(config.contextsPath, config.contextsSettings)
@@ -57,7 +58,7 @@ object Master extends App with Logger {
     implicit val system = ActorSystem("mist", config.raw)
     implicit val materializer = ActorMaterializer()
 
-    val workerRunner = WorkerRunner.create(config)
+    val workerRunner = WorkerRunner.create(config, kinit)
 
     val store = H2JobsRepository(config.dbPath)
 

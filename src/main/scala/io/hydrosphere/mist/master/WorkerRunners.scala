@@ -3,6 +3,7 @@ package io.hydrosphere.mist.master
 import java.io.File
 
 import io.hydrosphere.mist.master.models.{ContextConfig, RunMode}
+import io.hydrosphere.mist.master.security.KInitLauncher.LoopedProcess
 import io.hydrosphere.mist.utils.Logger
 
 import scala.concurrent.duration._
@@ -134,9 +135,9 @@ class ManualWorkerRunner(
 
 object WorkerRunner {
 
-  def create(config: MasterConfig): WorkerRunner = {
+  def create(config: MasterConfig, kinit: Option[LoopedProcess]): WorkerRunner = {
     val runnerType = config.workers.runner
-    runnerType match {
+    val runner = runnerType match {
       case "local" =>
         sys.env.get("SPARK_HOME") match {
           case None => throw new IllegalStateException("You should provide SPARK_HOME env variable for local runner")
@@ -149,6 +150,19 @@ object WorkerRunner {
       case _ =>
         throw new IllegalArgumentException(s"Unknown worker runner type $runnerType")
 
+    }
+    kinit match {
+      case Some(k) => new WorkerRunner {
+
+        override def runWorker(name: String, context: ContextConfig, mode: RunMode): Unit = {
+          k.execOnce()
+          runner.runWorker(name, context, mode)
+        }
+
+        override def onStop(name: String): Unit = runner.onStop(name)
+
+      }
+      case None => runner
     }
   }
 }
